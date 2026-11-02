@@ -10,6 +10,13 @@ Serves the modern JavaScript/Three.js frontend and exposes REST APIs for:
 import os
 import base64
 from typing import Optional
+
+# Ensure font directories for OpenCASCADE Font_FontMgr in headless Linux containers
+if "CSF_FontDirectories" not in os.environ:
+    for _fdir in ["/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/truetype", "/usr/share/fonts"]:
+        if os.path.isdir(_fdir):
+            os.environ["CSF_FontDirectories"] = _fdir
+            break
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse

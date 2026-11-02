@@ -15,6 +15,13 @@ import json
 import time
 from datetime import datetime
 
+# Ensure font directories for OpenCASCADE Font_FontMgr in headless Linux containers
+if "CSF_FontDirectories" not in os.environ:
+    for _fdir in ["/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/truetype", "/usr/share/fonts"]:
+        if os.path.isdir(_fdir):
+            os.environ["CSF_FontDirectories"] = _fdir
+            break
+
 import streamlit as st
 from dotenv import load_dotenv
 

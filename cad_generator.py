@@ -12,6 +12,14 @@ import ast
 import textwrap
 import urllib.request
 import urllib.error
+
+# Ensure font directories for OpenCASCADE Font_FontMgr in headless Linux containers
+if "CSF_FontDirectories" not in os.environ:
+    for _fdir in ["/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/truetype", "/usr/share/fonts"]:
+        if os.path.isdir(_fdir):
+            os.environ["CSF_FontDirectories"] = _fdir
+            break
+
 import cadquery as cq
 
 
