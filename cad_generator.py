@@ -41,7 +41,12 @@ SYSTEM_PROMPT = (
     "  • NEVER CALL .arc()! CadQuery Workplane has NO .arc() method. To round arm tops or bracket ends, use 3D fillets: .edges('>Z and |Y').fillet(radius) or .edges('|Y').fillet(radius), or combine with cylinders.\n"
     "  • NEVER PASS centerPoint to .workplane()! .workplane() takes NO centerPoint argument. To shift sketch origin, use .center(x, y) after .workplane().\n"
     "  • Text engraving: use .faces('>Z').workplane().center(x, y).text('TEXT', fontsize=4.0, distance=-0.6). Note that fontsize is all lowercase, and distance is negative for engraving cut depth. Do NOT use fontSize or depth.\n"
-    "  • .box() on a fresh Workplane does NOT take combine=True (e.g. use cq.Workplane('XY').box(L, W, H)). combine=True is only valid when adding to an existing solid.\n\n"
+    "  • .box() on a fresh Workplane does NOT take combine=True (e.g. use cq.Workplane('XY').box(L, W, H)). combine=True is only valid when adding to an existing solid.\n"
+    "  • CRITICAL FILLET/CHAMFER RULE (PREVENTS 'BRep_API: command not done'):\n"
+    "    NEVER CALL .edges('|Z').chamfer() or .edges('|Z').fillet() on complex profiles (gears, teeth, sprockets, splines, or multi-vertex polygons)!\n"
+    "    Calling .edges('|Z') on a gear selects all 80+ vertical tooth flank corners simultaneously, which immediately crashes OpenCASCADE with 'BRep_API: command not done'.\n"
+    "    When generating gears, sprockets, or complex profiles, DO NOT add decorative chamfers or fillets to the teeth. Keep tooth geometries clean.\n"
+    "  • GEARS & TEETH PATTERN: Compute tooth vertices in polar coordinates around the center in a loop, close the profile with cq.Workplane('XY').polyline(pts).close(), extrude once with .extrude(thickness), and add the bore with .faces('>Z').workplane().hole(bore_dia). Do NOT chamfer tooth edges.\n\n"
     "AVAILABLE CadQuery PATTERNS:\n"
     "  box                       -> cq.Workplane('XY').box(L, W, H)\n"
     "  cylinder                  -> cq.Workplane('XY').cylinder(height, radius)\n"
@@ -260,6 +265,45 @@ PRESET_EXAMPLES = {
             "result = clevis.faces('<Y').workplane().center(0, -35).text('ILIASS EL AHMAR Futur Leader', 4.0, -0.6)\n"
         ),
     },
+    "Engrenage droit": {
+        "description": (
+            "Un engrenage droit standard à 20 dents: module 2 (diamètre primitif 40mm, "
+            "diamètre extérieur 44mm), épaisseur 10mm avec alésage central de 10mm."
+        ),
+        "code": (
+            "import cadquery as cq\n"
+            "import math\n\n"
+            "# Paramètres de l'engrenage droit\n"
+            "num_teeth = 20\n"
+            "module = 2.0\n"
+            "pitch_diameter = num_teeth * module  # 40mm\n"
+            "addendum = module\n"
+            "dedendum = 1.25 * module\n"
+            "outer_diameter = pitch_diameter + 2 * addendum  # 44mm\n"
+            "root_diameter = pitch_diameter - 2 * dedendum   # 35mm\n"
+            "thickness = 10.0\n"
+            "bore_diameter = 10.0\n"
+            "pitch_angle = 360.0 / num_teeth\n\n"
+            "# Profil 2D polygonal pour toutes les dents\n"
+            "def polar(deg, r):\n"
+            "    rad = math.radians(deg)\n"
+            "    return (r * math.cos(rad), r * math.sin(rad))\n\n"
+            "pts = []\n"
+            "for i in range(num_teeth):\n"
+            "    a_center = i * pitch_angle\n"
+            "    a_root1 = a_center - pitch_angle * 0.45\n"
+            "    a_root2 = a_center + pitch_angle * 0.45\n"
+            "    a_tip1 = a_center - pitch_angle * 0.2\n"
+            "    a_tip2 = a_center + pitch_angle * 0.2\n"
+            "    pts.append(polar(a_root1, root_diameter / 2.0))\n"
+            "    pts.append(polar(a_tip1, outer_diameter / 2.0))\n"
+            "    pts.append(polar(a_tip2, outer_diameter / 2.0))\n"
+            "    pts.append(polar(a_root2, root_diameter / 2.0))\n\n"
+            "gear_sketch = cq.Workplane('XY').polyline(pts).close()\n"
+            "gear_solid = gear_sketch.extrude(thickness)\n"
+            "result = gear_solid.faces('>Z').workplane().hole(bore_diameter)\n"
+        ),
+    },
 }
 
 
@@ -272,6 +316,8 @@ def find_matching_preset(description: str):
     # Priority direct keywords for specialized mechanical parts
     if "chape" in desc_clean or "clevis" in desc_clean or ("bras" in desc_clean and "36mm" in desc_clean):
         return "Chape d'articulation en U", PRESET_EXAMPLES["Chape d'articulation en U"]["code"]
+    if "engrenage" in desc_clean or "gear" in desc_clean or "pignon" in desc_clean or "dent" in desc_clean:
+        return "Engrenage droit", PRESET_EXAMPLES["Engrenage droit"]["code"]
 
     # 1. Exact match with description or title
     for name, item in PRESET_EXAMPLES.items():
@@ -744,6 +790,21 @@ def get_part_properties(result) -> dict:
         }
 
 
+def strip_failing_chamfer_fillet(code: str) -> str:
+    """
+    Remove risky or failing .chamfer() and .fillet() operations from CadQuery code.
+    Fixes OpenCASCADE StdFail_NotDone / BRep_API: command not done on gears, sprockets, etc.
+    """
+    c = re.sub(
+        r'^\s*(?:result\s*=\s*)?result\s*\.(?:edges\([^\)]*\)\s*\.\s*)?(?:chamfer|fillet)\([^\)]*\)\s*$',
+        '',
+        code,
+        flags=re.MULTILINE,
+    )
+    c = re.sub(r'\.(?:edges\([^\)]*\)\s*\.\s*)?(?:chamfer|fillet)\([^\)]*\)', '', c)
+    return c
+
+
 def execute_cadquery_code(code: str):
     """
     Safely execute generated CadQuery code in an isolated namespace.
@@ -753,7 +814,7 @@ def execute_cadquery_code(code: str):
     """
     code = sanitize_cadquery_code(code)
     code = fix_code_indentation(code)
-    namespace: dict = {"cq": cq}
+    namespace: dict = {"cq": cq, "math": __import__("math")}
     try:
         exec(code, namespace)  # noqa: S102
     except Exception as exc:
@@ -789,13 +850,26 @@ def export_stl(result, output_path: str) -> None:
 def generate_part_from_code(code: str, step_output_path: str, stl_output_path: str) -> tuple:
     """
     Directly execute CadQuery code, export STEP and STL files, and compute geometric properties.
+    Includes automated fallback if decorative chamfer/fillet crashes OpenCASCADE.
     Returns (code, step_output_path, properties_dict).
     """
-    result = execute_cadquery_code(code)
+    try:
+        result = execute_cadquery_code(code)
+        working_code = code
+    except Exception as exc:
+        err_str = str(exc).lower()
+        if ("brep_api: command not done" in err_str or "stdfail_notdone" in err_str) and (
+            "chamfer" in code or "fillet" in code
+        ):
+            working_code = strip_failing_chamfer_fillet(code)
+            result = execute_cadquery_code(working_code)
+        else:
+            raise
+
     export_step(result, step_output_path)
     export_stl(result, stl_output_path)
     props = get_part_properties(result)
-    return code, step_output_path, props
+    return working_code, step_output_path, props
 
 
 def repair_cadquery_code(
@@ -838,6 +912,12 @@ def repair_cadquery_code(
     if "combine=true" in err_lower:
         diagnostic_hints.append(
             "• CRITICAL: .box() on a new Workplane cannot use combine=True because there is no prior solid to combine with."
+        )
+    if "brep_api: command not done" in err_lower or "stdfail_notdone" in err_lower:
+        diagnostic_hints.append(
+            "• CRITICAL: 'BRep_API: command not done' is caused by .chamfer() or .fillet() on complex or intersecting edges "
+            "(such as .edges('|Z') on gears, teeth, sprockets, splines, or multi-vertex polygons). "
+            "REMOVE all .chamfer() and .fillet() calls from the code to let the core solid geometry compile cleanly."
         )
 
     hints_str = "\n".join(diagnostic_hints)
