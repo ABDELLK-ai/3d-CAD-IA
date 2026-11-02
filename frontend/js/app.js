@@ -337,3 +337,4 @@ function showFeedback(msg, type = 'success') {
   elEditorFeedback.textContent = msg;
   elEditorFeedback.className = `editor-feedback ${type}`;
 }
+
