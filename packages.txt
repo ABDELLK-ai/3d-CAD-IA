@@ -3,10 +3,5 @@ fonts-dejavu
 fonts-dejavu-core
 fonts-freefont-ttf
 libgl1
-libgl1-mesa-glx
-libglib2.0-0
-libgomp1
-libxext6
-libsm6
-libxrender1
 libglu1-mesa
+libgomp1
