@@ -31,3 +31,4 @@ HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
 
 # Support dynamic $PORT for cloud PaaS (Render, Railway, Cloud Run) and default to 8501
 ENTRYPOINT ["sh", "-c", "streamlit run app.py --server.port=${PORT:-8501} --server.address=0.0.0.0"]
+
