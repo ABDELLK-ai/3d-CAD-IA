@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# System dependencies for CadQuery (OpenCASCADE OCCT) and Streamlit
+# System dependencies for CadQuery (OpenCASCADE OCCT)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
@@ -24,11 +24,10 @@ COPY . .
 # Ensure output directory exists
 RUN mkdir -p output
 
-# Expose Streamlit default port
+# Expose default port
 EXPOSE 8501
 
-HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+HEALTHCHECK CMD curl --fail http://localhost:8501/api/health || exit 1
 
 # Support dynamic $PORT for cloud PaaS (Render, Railway, Cloud Run) and default to 8501
-ENTRYPOINT ["sh", "-c", "streamlit run app.py --server.port=${PORT:-8501} --server.address=0.0.0.0"]
-
+ENTRYPOINT ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8501}"]

@@ -1,6 +1,6 @@
 @echo off
 echo =========================================
-echo   3D CAD Generator - Installation + Run
+echo   3D CAD Studio - Installation + Run
 echo =========================================
 echo.
 
@@ -25,14 +25,15 @@ if not exist ".env" (
     echo [4/4] Creation du fichier .env...
     copy .env.example .env
     echo IMPORTANT: Editez le fichier .env et ajoutez votre cle API Gemini!
-    pause
 ) else (
     echo [4/4] Fichier .env existant.
 )
 
-REM Launch Streamlit
+REM Launch FastApi Server + Three.js UI
 echo.
-echo Lancement de l'application...
-echo Ouvrez http://localhost:8501 dans votre navigateur.
+echo ========================================================
+echo   Lancement du serveur 3D CAD Studio (FastAPI + Three.js)
+echo   Ouvrez http://localhost:8501 dans votre navigateur
+echo ========================================================
 echo.
-streamlit run app.py
+python server.py

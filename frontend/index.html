@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D CAD Studio — Générateur CAO Paramétrique par IA</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%200%20100%20100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Three.js + STLLoader + OrbitControls (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+</head>
+<body>
+
+  <!-- ── Topbar ── -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">⚙️</div>
+      <div class="brand-text">
+        <h1>3D CAD Studio</h1>
+        <p>Générateur Paramétrique IA → CadQuery → Three.js WebGL</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="badge badge-purple" id="apiKeyBadge">⚡ Mode Démo</span>
+      <a href="https://github.com/ABDELLK-ai/3d-CAD-IA" target="_blank" class="btn-github">
+        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        GitHub
+      </a>
+    </div>
+  </header>
+
+  <!-- ── Main Application ── -->
+  <main class="app-container">
+
+    <!-- ── Left Sidebar Controls ── -->
+    <aside class="sidebar">
+
+      <!-- Section: API Configuration -->
+      <div class="section-card">
+        <div class="section-header">
+          <span>🔑 Configuration API</span>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="apiKeyInput">Clé API Google Gemini</label>
+          <input type="password" id="apiKeyInput" class="input-text" placeholder="AIzaSy...">
+          <span class="helper-text">
+            Clé gratuite sur <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a>. Laissez vide pour utiliser les modèles du mode démo.
+          </span>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="modelSelect">Moteur IA</label>
+          <select id="modelSelect" class="select-ctrl">
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommandé, ultra-rapide)</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro (Haute précision)</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Section: Preset Library -->
+      <div class="section-card">
+        <div class="section-header">
+          <span>⚡ Modèles Prédéfinis (Démo)</span>
+        </div>
+        <div class="field-group">
+          <select id="presetSelect" class="select-ctrl"></select>
+          <button type="button" id="btnLoadPreset" class="btn-secondary">
+            ⚡ Charger l'exemple
+          </button>
+        </div>
+      </div>
+
+      <!-- Section: Custom Description & Generation -->
+      <div class="section-card">
+        <div class="section-header">
+          <span>📝 Description de la Pièce</span>
+        </div>
+        <div class="field-group">
+          <textarea id="promptInput" class="textarea-prompt" placeholder="Ex: Plaque rectangulaire 100x60x10mm avec 4 trous de 8mm aux coins..."></textarea>
+        </div>
+        <button type="button" id="btnGenerate" class="btn-primary">
+          <span>⚙️</span> Générer la géométrie 3D
+        </button>
+      </div>
+
+      <!-- Section: Industrial CAD Exports -->
+      <div class="section-card">
+        <div class="section-header">
+          <span>📥 Téléchargement & Exports</span>
+        </div>
+        <div class="btn-download-group">
+          <a id="btnDownloadStep" class="btn-download" href="/api/download/step" download="piece.step">
+            💾 STEP (CAO)
+          </a>
+          <a id="btnDownloadStl" class="btn-download" href="/api/download/stl" download="piece.stl">
+            🖨️ STL (3D)
+          </a>
+        </div>
+        <span class="helper-text">
+          Compatible CATIA V5, SolidWorks, Autodesk Fusion, FreeCAD et trancheurs 3D (Cura, Bambu).
+        </span>
+      </div>
+
+    </aside>
+
+    <!-- ── Right Main Area ── -->
+    <section class="main-view">
+
+      <!-- 3D WebGL Viewport Container -->
+      <div class="viewer-wrapper">
+
+        <!-- Toolbar -->
+        <div class="viewer-toolbar">
+          <button type="button" class="tool-btn" data-view="iso" title="Vue Isométrique 3D">📐 Iso</button>
+          <button type="button" class="tool-btn" data-view="top" title="Vue de dessus">🔝 Dessus</button>
+          <button type="button" class="tool-btn" data-view="front" title="Vue de face">🔲 Face</button>
+          <button type="button" class="tool-btn" data-view="right" title="Vue de droite">➡️ Droite</button>
+          <button type="button" class="tool-btn" data-view="reset" title="Recentrer la caméra">🔄 Reset</button>
+
+          <div class="tool-sep"></div>
+
+          <!-- Material Switcher -->
+          <select id="matSelect" class="select-ctrl" style="width: auto; padding: 3px 8px; font-size: 0.78rem;">
+            <option value="cad_blue">🔷 Bleu CAO</option>
+            <option value="steel">⚪ Acier Inox</option>
+            <option value="brass">🟡 Laiton / Bronze</option>
+            <option value="dark">🪨 Polymère Sombre</option>
+            <option value="orange">🟠 Orange Atelier</option>
+          </select>
+
+          <div class="tool-sep"></div>
+
+          <!-- Toggles -->
+          <button type="button" class="tool-btn active" id="btnEdges" title="Arêtes de découpe">Arêtes</button>
+          <button type="button" class="tool-btn" id="btnBox" title="Boîte englobante">Boîte</button>
+          <button type="button" class="tool-btn active" id="btnGrid" title="Grille de référence">Grille</button>
+          <button type="button" class="tool-btn" id="btnRotate" title="Rotation continue">🔄 Auto</button>
+
+          <div class="tool-sep"></div>
+
+          <!-- Snapshot -->
+          <button type="button" class="tool-btn" id="btnSnapshot" title="Exporter un rendu PNG HD">📸 Capture</button>
+        </div>
+
+        <!-- 3D Canvas -->
+        <div id="viewport-container"></div>
+
+        <!-- Bottom HUD -->
+        <div class="hud-bottom-left">
+          <div class="hud-badge" id="hudDim">DIM: <b>—</b></div>
+          <div class="hud-badge" id="hudVol">VOL: <b>—</b></div>
+          <div class="hud-badge" id="hudTri">TRI: <b>—</b></div>
+        </div>
+
+        <div class="hud-bottom-right">
+          🖱 <b>Clic G</b>: Rotation · <b>Clic D / Maj+G</b>: Déplacement · <b>Molette</b>: Zoom
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="viewer-overlay" id="viewerOverlay">
+          <div class="spinner"></div>
+          <div class="overlay-status" id="overlayStatus">Génération de la pièce en cours...</div>
+        </div>
+
+      </div>
+
+      <!-- Lower Panels (Metrology & Live Code Editor) -->
+      <div class="lower-tabs">
+        <button type="button" class="tab-btn active" data-target="pane-metrology">
+          📊 Propriétés & Métrologie B-Rep
+        </button>
+        <button type="button" class="tab-btn" data-target="pane-editor">
+          ✏️ Éditeur CadQuery Live
+        </button>
+      </div>
+
+      <!-- Tab: Metrology -->
+      <div class="tab-pane active" id="pane-metrology">
+        <div class="props-grid">
+          <div class="prop-card">
+            <span class="prop-card-title">Boîte Englobante (X × Y × Z)</span>
+            <span class="prop-card-value" id="propDim">—</span>
+            <span class="prop-card-sub">Encombrement maximum hors-tout</span>
+          </div>
+          <div class="prop-card">
+            <span class="prop-card-title">Volume Exact</span>
+            <span class="prop-card-value" id="propVol">—</span>
+            <span class="prop-card-sub">Intégrale B-Rep OpenCASCADE</span>
+          </div>
+          <div class="prop-card">
+            <span class="prop-card-title">Surface Totale</span>
+            <span class="prop-card-value" id="propArea">—</span>
+            <span class="prop-card-sub">Somme des faces topologiques</span>
+          </div>
+          <div class="prop-card">
+            <span class="prop-card-title">Centre de Gravité</span>
+            <span class="prop-card-value" id="propCenter">—</span>
+            <span class="prop-card-sub">Coordonnées barycentre (X, Y, Z)</span>
+          </div>
+          <div class="prop-card">
+            <span class="prop-card-title">Masse Acier (7.85 g/cm³)</span>
+            <span class="prop-card-value" id="massSteel">—</span>
+            <span class="prop-card-sub">Acier d'usinage standard</span>
+          </div>
+          <div class="prop-card">
+            <span class="prop-card-title">Masse Aluminium (2.70 g/cm³)</span>
+            <span class="prop-card-value" id="massAlu">—</span>
+            <span class="prop-card-sub">Alu 6061 / 7075</span>
+          </div>
+          <div class="prop-card">
+            <span class="prop-card-title">Masse PLA 3D (1.24 g/cm³)</span>
+            <span class="prop-card-value" id="massPla">—</span>
+            <span class="prop-card-sub">Remplissage solide 100%</span>
+          </div>
+          <div class="prop-card">
+            <span class="prop-card-title">Masse Titane (4.50 g/cm³)</span>
+            <span class="prop-card-value" id="massTitanium">—</span>
+            <span class="prop-card-sub">Alliage Ti-6Al-4V</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Live Editor -->
+      <div class="tab-pane" id="pane-editor">
+        <div class="editor-container">
+          <div class="editor-toolbar">
+            <span class="editor-title">
+              <span>🐍</span> Code Python CadQuery (Éditable)
+            </span>
+            <button type="button" id="btnRecalculate" class="btn-primary" style="padding: 6px 14px; font-size: 0.82rem;">
+              ⚡ Recalculer la géométrie
+            </button>
+          </div>
+          <textarea id="codeEditor" class="code-textarea" spellcheck="false"></textarea>
+          <div id="editorFeedback" class="editor-feedback"></div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

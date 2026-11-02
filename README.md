@@ -17,10 +17,18 @@ Application web Python professionnelle qui transforme une description en **langa
 
 ```
 3D CAD/
-├── app.py              ← Application Streamlit (UI studio + viewer Three.js + éditeur)
+├── server.py           ← Serveur backend FastAPI (REST API & service statique)
+├── frontend/           ← Frontend moderne découplé (JavaScript pur & Three.js)
+│   ├── index.html      ← Interface utilisateur studio
+│   ├── css/style.css   ← Thème sombre Studio & responsive design
+│   └── js/
+│       ├── viewer.js   ← Module Three.js (Scene, OrbitControls, STLLoader, Matériaux)
+│       └── app.js      ← Contrôleur client & logique applicative
 ├── cad_generator.py    ← Pipeline IA → CadQuery → Propriétés B-Rep → STEP/STL
-├── requirements.txt    ← Dépendances Python
+├── app.py              ← Application legacy Streamlit (conservée pour rétrocompatibilité)
+├── requirements.txt    ← Dépendances Python (FastAPI, CadQuery, etc.)
 ├── run.bat             ← Script de lancement automatique Windows
+├── Dockerfile          ← Conteneurisation de production (Debian + OpenCASCADE)
 ├── .env.example        ← Template pour les variables d'environnement
 ├── .env                ← Clé API Gemini (optionnelle pour le mode démo)
 └── output/             ← Fichiers générés (STEP, STL)
@@ -31,24 +39,24 @@ Application web Python professionnelle qui transforme une description en **langa
 ## Installation et Lancement
 
 ### Option 1 — Lancement rapide sous Windows (Recommandé)
-Double-cliquez simplement sur `run.bat`. Le script configure l'environnement virtuel, installe les dépendances et lance l'application.
+Double-cliquez simplement sur `run.bat`. Le script configure l'environnement virtuel, installe les dépendances et lance l'application sur `http://localhost:8501`.
 
 ### Option 2 — En ligne de commande
 
 ```bash
-# 1. Créer l'environnement virtuel
+# 1. Créer et activer l'environnement virtuel
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate   # (Windows) ou source .venv/bin/activate (Linux/Mac)
 
 # 2. Installer les dépendances
 pip install -r requirements.txt
 
 # 3. (Optionnel) Configurer votre clé API Gemini
 copy .env.example .env
-# Renseigner GEMINI_API_KEY dans .env pour la génération IA libre
 
-# 4. Lancer l'application
-streamlit run app.py
+# 4. Lancer le serveur FastAPI + Frontend JS
+python server.py
+# Ou avec uvicorn : uvicorn server:app --reload --port 8501
 ```
 
 ---
