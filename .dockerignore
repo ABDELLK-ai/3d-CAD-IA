@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+output/*
+!output/.gitkeep
+.git/
+.gitignore
+README.md
+run.bat
